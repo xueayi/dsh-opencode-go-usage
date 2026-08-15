@@ -103,6 +103,15 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-error-primary) 22%, transparent);
 }
 
+/* Stale: last successful data is still shown, but the latest refresh failed. */
+.healthStale {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-warn-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-warn-primary) 22%, transparent);
+}
+
 @keyframes usage-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
@@ -336,6 +345,12 @@
   color: var(--dsw-alias-label-tertiary);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Quiet inline note when the latest refresh failed but old data is shown. */
+.staleNote {
+  color: var(--dsw-alias-state-warn-primary);
+  font-size: 11px;
 }
 
 .refreshButton {

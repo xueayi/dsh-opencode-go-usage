@@ -108,7 +108,8 @@ export function UsageDock(): ReactElement {
         )}
         <span
           className={state === null ? styles.healthUnknown
-            : state.status === 'ok' ? styles.healthOk
+            : state.health.status === 'ok' ? styles.healthOk
+            : stateHasUsage(state) ? styles.healthStale
             : styles.healthBad}
           aria-hidden="true"
         />
@@ -120,7 +121,10 @@ export function UsageDock(): ReactElement {
               <span className={styles.panelLogo} aria-hidden="true">◈</span>
               <span>OpenCode Go 用量</span>
               <span className={styles.healthLabel}>
-                {state === null ? '连接中…' : state.status === 'ok' ? '实时' : '异常'}
+                {state === null ? '连接中…'
+                  : state.health.status === 'ok' ? '实时'
+                  : stateHasUsage(state) ? '数据过期'
+                  : '异常'}
               </span>
             </div>
             <button
@@ -133,7 +137,7 @@ export function UsageDock(): ReactElement {
             </button>
           </header>
 
-          {state !== null && state.status === 'ok' ? (
+          {state !== null && stateHasUsage(state) ? (
             <div className={styles.windows}>
               {windows.map((window) => (
                 <WindowRow key={window.key} window={window} now={now} />
@@ -145,14 +149,16 @@ export function UsageDock(): ReactElement {
           ) : (
             <div className={styles.errorBox}>
               <p className={styles.errorTitle}>
-                {state === null ? '正在连接用量服务…' : state.status === 'error' ? '用量获取失败' : '尚未配置 API Key'}
+                {state === null ? '正在连接用量服务…'
+                  : state.health.status === 'unconfigured' ? '尚未配置 API Key'
+                  : '用量获取失败'}
               </p>
               <p className={styles.errorDetail}>
                 {state === null
                   ? '如果长时间停留在该状态，请检查 dsh 服务是否运行了 dsh-opencode-go-usage 插件。'
-                  : state.error}
+                  : state.health.error}
               </p>
-              {state !== null && state.status === 'unconfigured' && (
+              {state !== null && state.health.status === 'unconfigured' && (
                 <p className={styles.errorHint}>
                   配置方法：在 dsh 凭据（如 ~/.dsh/.credentials.yaml 或环境变量）中设置 OPENCODE_GO_API_KEY，
                   或在 cordis.yml 中为该插件配置 apiKey 字段。
@@ -163,7 +169,10 @@ export function UsageDock(): ReactElement {
 
           <footer className={styles.panelFooter}>
             <span className={styles.updatedAt}>
-              {state === null ? '' : `更新于 ${formatRelative(state.fetchedAt, now)}`}
+              {state === null ? '' : `更新于 ${formatRelative(state.usageFetchedAt ?? state.health.fetchedAt, now)}`}
+              {state !== null && stateHasUsage(state) && state.health.status !== 'ok' && (
+                <span className={styles.staleNote}> · 刷新失败，显示上次数据</span>
+              )}
             </span>
             <button
               type="button"

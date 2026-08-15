@@ -9,9 +9,10 @@
  * Usage: node scripts/verify.mjs
  */
 
-import { parseUsageBody } from '../lib/usage.js'
+import { parseUsageBody, fetchOpenCodeUsage } from '../lib/usage.js'
 import {
-  formatRelative, formatRemaining, formatRemainingCompact, percentTone, usageWindows,
+  formatRelative, formatRemaining, formatRemainingCompact, percentTone,
+  stateHasUsage, usageWindows,
 } from '../lib/client/usage-model.js'
 
 let failures = 0
@@ -44,6 +45,29 @@ console.log('usage parse')
   const partial = parseUsageBody({ usage: { rolling: { status: 'ok', percent: 1, resetsAt: 'x' } } })
   check('accepts a partial sample with one window', partial?.rolling?.percent === 1)
   check('drops unknown window keys', partial?.monthly === undefined)
+}
+
+console.log('fetch failure path')
+{
+  const failure = await fetchOpenCodeUsage('not-a-url', 'sk-test', 2000)
+    .then(() => 'resolved')
+    .catch((error) => error instanceof Error ? error.message : 'non-error')
+  check('fetch rejects with a user-facing message', failure !== 'resolved' && failure.length > 0, failure)
+}
+
+console.log('state model')
+{
+  const withData = {
+    usage: { rolling: { status: 'ok', percent: 1, resetsAt: 'x' } },
+    usageFetchedAt: 1,
+    health: { status: 'error', fetchedAt: 2, error: 'boom' },
+  }
+  const withoutData = { health: { status: 'unconfigured', fetchedAt: 3, error: 'no key' } }
+  check('state with usage is usable', stateHasUsage(withData) === true)
+  check('state without usage is not usable', stateHasUsage(withoutData) === false)
+  check('null state is not usable', stateHasUsage(null) === false)
+  const windows = usageWindows(withData.usage)
+  check('windows still project from kept data', windows.length === 1 && windows[0].percent === 1)
 }
 
 console.log('dock projections')

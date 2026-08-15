@@ -32,10 +32,10 @@ export declare function formatRemaining(resetsAt: number, now: number): string;
 export declare function formatRemainingCompact(resetsAt: number, now: number): string;
 /** Human-readable age of a sample. */
 export declare function formatRelative(fetchedAt: number, now: number): string;
-/** Whether a state carries usable quota windows. */
-export declare function stateHasUsage(state: OpenCodeUsageState | null): state is Extract<OpenCodeUsageState, {
-    status: 'ok';
-}>;
+/** Whether a state carries usable quota windows (kept across failed refreshes). */
+export declare function stateHasUsage(state: OpenCodeUsageState | null): state is OpenCodeUsageState & {
+    usage: OpenCodeUsageData;
+};
 /** Fetch the current cached sample from the plugin route. */
 export declare function fetchState(): Promise<OpenCodeUsageState>;
 /** Ask the host for an immediate refresh and return the new sample. */

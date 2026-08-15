@@ -38,6 +38,13 @@ dsh plugin --profile <name> add /path/to/dsh-opencode-go-usage
 | `refreshMs` | number | `60000` | 自动刷新间隔 |
 | `timeoutMs` | number | `10000` | 单次请求超时 |
 
+## 显示稳定性
+
+数据与健康状态分离：某次刷新失败（网络超时、API 异常）时，用量坞**继续
+显示上次成功获取的额度**，仅状态点转为黄色、面板底部出现一行「刷新失败，
+显示上次数据」的淡提示，不打断显示；只有从未成功获取过时才显示错误/未配置
+提示。
+
 ## Model Experience
 
 ### Request surface and condition
@@ -57,4 +64,6 @@ dsh plugin --profile <name> add /path/to/dsh-opencode-go-usage
 
 - **轮询延迟** —— 收起态徽章每 60 秒、展开态面板每 10 秒轮询一次，用量
   变化最多延迟一个轮询周期。
+- **数据新鲜度** —— 刷新连续失败时继续显示上次成功数据，数据会随时间
+  变旧，恢复后自动更新。
 - **单账户** —— 每个 profile 只解析一个 API Key；多账户仪表盘不在范围内。

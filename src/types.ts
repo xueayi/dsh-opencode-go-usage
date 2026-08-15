@@ -28,26 +28,29 @@ export interface OpenCodeUsageData {
   monthly?: OpenCodeUsageWindow
 }
 
-/** The cached usage sample plus its health, served to the web client. */
-export type OpenCodeUsageState =
-  | {
-    /** A fresh sample was fetched successfully. */
-    status: 'ok'
-    /** Epoch millis of the successful fetch. */
-    fetchedAt: number
-    usage: OpenCodeUsageData
-  }
-  | {
-    /** The last fetch failed; `error` carries a user-facing reason. */
-    status: 'error'
-    /** Epoch millis of the failed attempt. */
-    fetchedAt: number
-    error: string
-  }
-  | {
-    /** No API key is resolvable, so no fetch is attempted. */
-    status: 'unconfigured'
-    /** Epoch millis of the last attempt (0 before the first). */
-    fetchedAt: number
-    error: string
-  }
+/** Health of the most recent refresh attempt, independent of the data. */
+export interface OpenCodeUsageHealth {
+  /** `ok` after a successful fetch; `error` after a failed one; `unconfigured` while no API key resolves. */
+  status: 'ok' | 'error' | 'unconfigured'
+  /** Epoch millis of the most recent attempt (0 before the first). */
+  fetchedAt: number
+  /** User-facing failure reason, present when `status` is not `ok`. */
+  error?: string
+}
+
+/**
+ * The cached usage sample served to the web client.
+ *
+ * Data and health are decoupled on purpose: a failed refresh keeps the last
+ * successful sample (`usage` / `usageFetchedAt`) so the dock stays stable —
+ * it keeps showing the previous numbers and degrades silently instead of
+ * blanking out. `usage` is absent only before the first successful fetch.
+ */
+export interface OpenCodeUsageState {
+  /** Last successfully fetched quota windows; absent only before the first success. */
+  usage?: OpenCodeUsageData
+  /** Epoch millis of the sample in `usage` (absent together with it). */
+  usageFetchedAt?: number
+  /** Health of the most recent refresh attempt. */
+  health: OpenCodeUsageHealth
+}

@@ -41,6 +41,14 @@ The API key is resolved per refresh through `ctx.credentials` under the
 | `refreshMs` | number | `60000` | auto-refresh interval |
 | `timeoutMs` | number | `10000` | per-request timeout |
 
+## Display stability
+
+Data and health are decoupled: when a refresh fails (timeout, API error), the
+dock **keeps showing the last successful sample** — the status dot turns
+yellow and a quiet "refresh failed, showing previous data" note appears in
+the panel footer. The display is never blanked; error / unconfigured states
+appear only before the first successful fetch.
+
 ## Model Experience
 
 ### Request surface and condition
@@ -60,5 +68,7 @@ None — no request tokens added or replaced.
 
 - **Poll latency** — the collapsed badge polls every 60s, the open panel
   every 10s; quota changes appear within at most one poll cycle.
+- **Data freshness** — after repeated failed refreshes the dock keeps showing
+  the last successful sample, which grows stale until a refresh succeeds.
 - **Single account** — one API key per profile; multi-account dashboards are
   out of scope.

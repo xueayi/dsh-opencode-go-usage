@@ -30,7 +30,7 @@ import type { CredentialProvider } from '@deepseek-ai/dsh-credentials'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { fetchOpenCodeUsage } from './usage.ts'
-import type { OpenCodeUsageState } from './types.ts'
+import type { OpenCodeUsageData, OpenCodeUsageHealth, OpenCodeUsageState } from './types.ts'
 
 /**
  * Structural slice of the web server service, compatible with both the
@@ -91,10 +91,22 @@ export function apply(ctx: Context, config: Config): void {
   const endpoint = config.endpoint ?? 'https://opencode.ai/zen/go/v1/usage'
   const timeoutMs = config.timeoutMs ?? 10_000
 
-  /** The last sample; served verbatim to the web client. */
-  let current: OpenCodeUsageState = { status: 'unconfigured', fetchedAt: 0, error: '尚未刷新' }
+  /** Last successful sample; kept across failed refreshes so the UI stays stable. */
+  let lastGood: { usage: OpenCodeUsageData; fetchedAt: number } | null = null
+  /** Health of the most recent refresh attempt. */
+  let health: OpenCodeUsageHealth = {
+    status: 'unconfigured',
+    fetchedAt: 0,
+    error: '尚未刷新',
+  }
   /** In-flight refresh, so concurrent triggers share one request. */
   let refreshing: Promise<OpenCodeUsageState> | null = null
+
+  /** Assemble the state served to the web client from data + health. */
+  const buildState = (): OpenCodeUsageState => ({
+    ...(lastGood !== null ? { usage: lastGood.usage, usageFetchedAt: lastGood.fetchedAt } : {}),
+    health,
+  })
 
   /** Run one refresh and publish its sample; concurrent calls coalesce. */
   const refresh = (): Promise<OpenCodeUsageState> => {
@@ -103,26 +115,29 @@ export function apply(ctx: Context, config: Config): void {
       const fetchedAt = Date.now()
       const apiKey = await resolveApiKey(ctx, config)
       if (apiKey === undefined) {
-        return {
+        health = {
           status: 'unconfigured',
           fetchedAt,
           error: `未找到 API Key：请配置 apiKey，或在凭据中设置 ${config.apiKeyEnv ?? 'OPENCODE_GO_API_KEY'}`,
         }
+        return buildState()
       }
       try {
         const usage = await fetchOpenCodeUsage(endpoint, apiKey, timeoutMs)
-        return { status: 'ok', fetchedAt, usage }
+        lastGood = { usage, fetchedAt }
+        health = { status: 'ok', fetchedAt }
       } catch (error) {
-        return {
+        // Silent degradation: keep showing the last successful sample; only
+        // the health record changes (debug-level log, no user-facing noise).
+        health = {
           status: 'error',
           fetchedAt,
           error: error instanceof Error ? error.message : String(error),
         }
+        ctx.logger.debug(`opencode-go-usage: refresh failed: ${health.error}`)
       }
-    })().then((next) => {
-      current = next
-      return next
-    }).finally(() => {
+      return buildState()
+    })().then((next) => next).finally(() => {
       refreshing = null
     })
     return refreshing
@@ -160,7 +175,7 @@ export function apply(ctx: Context, config: Config): void {
       kind: 'exact',
       path: '/plugins/dsh-opencode-go-usage/state',
       handler: (_req, res) => {
-        sendJson(res, current)
+        sendJson(res, buildState())
       },
     }), 'opencode-go-usage: state route')
 
@@ -171,8 +186,10 @@ export function apply(ctx: Context, config: Config): void {
         try {
           sendJson(res, await refresh())
         } catch (error) {
-          ctx.logger.warn(`opencode-go-usage: refresh failed: ${String(error)}`)
-          sendJson(res, { status: 'error', fetchedAt: Date.now(), error: String(error) }, 500)
+          // Last-resort guard: refresh() itself never throws (failures land in
+          // health), so this only fires on unexpected internal errors.
+          ctx.logger.warn(`opencode-go-usage: refresh crashed: ${String(error)}`)
+          sendJson(res, buildState(), 500)
         }
       },
     }), 'opencode-go-usage: refresh route')

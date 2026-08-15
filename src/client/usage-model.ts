@@ -102,9 +102,9 @@ export function formatRelative(fetchedAt: number, now: number): string {
   return `${Math.floor(hours / 24)}天前`
 }
 
-/** Whether a state carries usable quota windows. */
-export function stateHasUsage(state: OpenCodeUsageState | null): state is Extract<OpenCodeUsageState, { status: 'ok' }> {
-  return state !== null && state.status === 'ok'
+/** Whether a state carries usable quota windows (kept across failed refreshes). */
+export function stateHasUsage(state: OpenCodeUsageState | null): state is OpenCodeUsageState & { usage: OpenCodeUsageData } {
+  return state !== null && state.usage !== undefined
 }
 
 /** Fetch the current cached sample from the plugin route. */
