@@ -1,5 +1,5 @@
 {
-  "name": "@nanmicoder/dsh-opencode-go-usage",
+  "name": "@xueayi/dsh-opencode-go-usage",
   "version": "0.1.0",
   "description": "OpenCode Go plan usage monitor for DeepSeek Harness: real-time 5h-rolling / weekly / monthly quota in a floating web dock",
   "type": "module",
@@ -25,17 +25,17 @@
   ],
   "license": "MIT",
   "author": {
-    "name": "程序员阿江 (Relakkes)",
-    "email": "relakkes@gmail.com",
-    "url": "https://github.com/NanmiCoder"
+    "name": "雪阿宜（xueayi）",
+    "email": "xueayi503@qq.com",
+    "url": "https://github.com/xueayi"
   },
-  "homepage": "https://github.com/NanmiCoder/dsh-opencode-go-usage#readme",
+  "homepage": "https://github.com/xueayi/dsh-opencode-go-usage#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NanmiCoder/dsh-opencode-go-usage.git"
+    "url": "git+https://github.com/xueayi/dsh-opencode-go-usage.git"
   },
   "bugs": {
-    "url": "https://github.com/NanmiCoder/dsh-opencode-go-usage/issues"
+    "url": "https://github.com/xueayi/dsh-opencode-go-usage/issues"
   },
   "keywords": [
     "dsh",

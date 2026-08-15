@@ -9,7 +9,7 @@ Bearer API Key 认证，无需 workspace id、无需 Cookie）。
 ## 安装
 
 ```sh
-dsh plugin --profile <name> add @nanmicoder/dsh-opencode-go-usage
+dsh plugin --profile <name> add @xueayi/dsh-opencode-go-usage
 # 或本地路径：
 dsh plugin --profile <name> add /path/to/dsh-opencode-go-usage
 ```
@@ -28,7 +28,7 @@ Key，之后无需任何配置即可使用。
 ```yaml
 - insert:
     - id: opencode-go-usage
-      name: '@nanmicoder/dsh-opencode-go-usage'
+      name: '@xueayi/dsh-opencode-go-usage'
       config:
         apiKeyEnv: OPENCODE_GO_API_KEY
         refreshMs: 60000

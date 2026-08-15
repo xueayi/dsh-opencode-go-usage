@@ -17,7 +17,7 @@
       # Node-resolvable package name — must stay in sync with package.json
       # `name`. Quoted because `@` is a reserved indicator in YAML and cannot
       # open a plain scalar.
-      name: '@nanmicoder/dsh-opencode-go-usage'
+      name: '@xueayi/dsh-opencode-go-usage'
       config:
         # Credential reference resolved per refresh via ctx.credentials.
         apiKeyEnv: OPENCODE_GO_API_KEY
