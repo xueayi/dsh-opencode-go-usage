@@ -5,12 +5,12 @@
 .badge {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  bottom: 22px;
   z-index: 2147483000;
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  height: 42px;
+  height: 48px;
   padding: 0 16px;
   box-sizing: border-box;
   border: 1px solid var(--dsw-alias-border-l2);
@@ -47,13 +47,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Inner remaining-time ring: quiet track + distinct brand-colored arc. */
+/* Inner remaining-time ring: quiet track + blue arc (static bluish tone so
+   it reads as blue in both themes; hard fallback for older token sets). */
 .ringTimeTrack {
   stroke: var(--dsw-alias-border-l1);
 }
 
 .ringTimeBar {
-  stroke: var(--dsw-alias-brand-primary);
+  stroke: var(--dsw-static-neutral-bluish-400, #3f8cff);
 }
 
 /* 5h-rolling reset countdown, separated from the quota rings. The icon and
@@ -129,7 +130,7 @@
 .panel {
   position: fixed;
   right: 18px;
-  bottom: 72px;
+  bottom: 82px;
   z-index: 2147483000;
   width: 362px;
   box-sizing: border-box;
