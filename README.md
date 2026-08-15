@@ -20,9 +20,12 @@ Restart the profile afterwards (`dsh web` for the browser UI).
 
 ## Configure
 
+**Recommended**: pick the official-channel OpenCode Go provider in
+Web Settings → Models and enter the API key there; nothing else is needed.
+
 The API key is resolved per refresh through `ctx.credentials` under the
-`apiKeyEnv` reference (default `OPENCODE_GO_API_KEY`) — store it in
-`~/.dsh/.credentials.yaml` or an environment variable, not in config:
+`apiKeyEnv` reference (default `OPENCODE_GO_API_KEY`) — it can also be stored
+manually in `~/.dsh/.credentials.yaml` or an environment variable:
 
 ```yaml
 - insert:

@@ -18,8 +18,12 @@ dsh plugin --profile <name> add /path/to/dsh-opencode-go-usage
 
 ## 配置
 
+**推荐途径**：在 Web 设置 → 模型 中选择「官方渠道 · OpenCode Go」并填入 API
+Key，之后无需任何配置即可使用。
+
 插件每次刷新通过 `ctx.credentials` 解析 `apiKeyEnv` 指定的凭据引用（默认
-`OPENCODE_GO_API_KEY`），把 Key 存入 `~/.dsh/.credentials.yaml` 或环境变量即可：
+`OPENCODE_GO_API_KEY`），也可手动把 Key 存入 `~/.dsh/.credentials.yaml`
+或环境变量：
 
 ```yaml
 - insert:

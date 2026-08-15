@@ -160,8 +160,8 @@ export function UsageDock(): ReactElement {
               </p>
               {state !== null && state.health.status === 'unconfigured' && (
                 <p className={styles.errorHint}>
-                  配置方法：在 dsh 凭据（如 ~/.dsh/.credentials.yaml 或环境变量）中设置 OPENCODE_GO_API_KEY，
-                  或在 cordis.yml 中为该插件配置 apiKey 字段。
+                  配置方法：打开 Web 设置 → 模型，选择「官方渠道 · OpenCode Go」，填入 API Key
+                  后稍候片刻即会自动生效。
                 </p>
               )}
             </div>
