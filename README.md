@@ -11,9 +11,12 @@ no cookie).
 ## Install
 
 ```sh
-dsh plugin --profile <name> add @xueayi/dsh-opencode-go-usage
-# or from a local checkout:
-dsh plugin --profile <name> add /path/to/dsh-opencode-go-usage
+# From npm (the Web GUI runs on the `web` profile):
+dsh plugin --profile web add @xueayi/dsh-opencode-go-usage
+# Or from a local checkout:
+dsh plugin --profile web add /path/to/dsh-opencode-go-usage
+# Upgrade to the latest version:
+dsh plugin --profile web update @xueayi/dsh-opencode-go-usage
 ```
 
 Restart the profile afterwards (`dsh web` for the browser UI).

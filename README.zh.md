@@ -9,9 +9,12 @@ Bearer API Key 认证，无需 workspace id、无需 Cookie）。
 ## 安装
 
 ```sh
-dsh plugin --profile <name> add @xueayi/dsh-opencode-go-usage
+# 从 npm 安装（Web GUI 对应 web profile）：
+dsh plugin --profile web add @xueayi/dsh-opencode-go-usage
 # 或本地路径：
-dsh plugin --profile <name> add /path/to/dsh-opencode-go-usage
+dsh plugin --profile web add /path/to/dsh-opencode-go-usage
+# 升级到最新版：
+dsh plugin --profile web update @xueayi/dsh-opencode-go-usage
 ```
 
 安装后重启对应 profile（Web UI 即 `dsh web`）。
