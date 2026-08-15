@@ -42,9 +42,18 @@
 
 .badgeRingText {
   fill: var(--dsw-alias-label-primary);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Inner remaining-time ring: quiet track + distinct brand-colored arc. */
+.ringTimeTrack {
+  stroke: var(--dsw-alias-border-l1);
+}
+
+.ringTimeBar {
+  stroke: var(--dsw-alias-brand-primary);
 }
 
 /* 5h-rolling reset countdown, separated from the quota rings. The icon and

@@ -16,7 +16,7 @@ import type { ReactElement } from 'react'
 import type { OpenCodeUsageState } from '../types.ts'
 import {
   fetchState, formatRelative, formatRemaining, formatRemainingCompact,
-  percentTone, refreshState, stateHasUsage, usageWindows,
+  percentTone, refreshState, remainingRatio, stateHasUsage, usageWindows,
   type UsageTone, type WindowView,
 } from './usage-model.ts'
 import styles from './usage.module.css'
@@ -89,9 +89,8 @@ export function UsageDock(): ReactElement {
             {windows.map((window) => (
               <BadgeRing
                 key={window.key}
-                percent={window.percent}
-                tone={percentTone(window.percent)}
-                label={window.label}
+                window={window}
+                now={now}
               />
             ))}
             {rolling !== undefined && (
@@ -269,17 +268,27 @@ export function Ring({ percent, tone, size = 50 }: { percent: number; tone: Usag
 }
 
 /**
- * Fixed-size mini ring for the collapsed badge: circular progress plus the
- * percent centered inside. Fixed SVG dimensions keep the badge layout stable
- * — no inline text can overlap regardless of font fallback or zoom.
+ * Fixed-size double ring for the collapsed badge: the outer ring shows the
+ * window's used percent (threshold-colored); the inner ring shows the share
+ * of the window period still left before its reset, in a distinct color.
+ * Fixed SVG dimensions keep the badge layout stable — no inline text can
+ * overlap regardless of font fallback or zoom.
  */
-function BadgeRing({ percent, tone, label }: { percent: number; tone: UsageTone; label: string }): ReactElement {
+function BadgeRing({ window, now }: { window: WindowView; now: number }): ReactElement {
   const size = 36
   const stroke = 3.5
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
-  const used = Math.min(100, Math.max(0, percent))
+  const used = Math.min(100, Math.max(0, window.percent))
   const dash = (circumference * used) / 100
+
+  // Inner remaining-time ring, drawn just inside the usage ring.
+  const timeStroke = 2.5
+  const timeRadius = radius - 6
+  const timeCircumference = 2 * Math.PI * timeRadius
+  const remaining = remainingRatio(window.resetsAt, window.periodMs, now)
+  const timeDash = timeCircumference * remaining
+
   return (
     <svg
       className={styles.badgeRing}
@@ -287,7 +296,7 @@ function BadgeRing({ percent, tone, label }: { percent: number; tone: UsageTone;
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       role="img"
-      aria-label={`${label}已用 ${used}%`}
+      aria-label={`${window.label}已用 ${used}%，剩余 ${Math.round(remaining * 100)}%`}
     >
       <circle
         className={styles.ringTrack}
@@ -299,7 +308,7 @@ function BadgeRing({ percent, tone, label }: { percent: number; tone: UsageTone;
       />
       <circle
         className={styles.ringBar}
-        data-tone={tone}
+        data-tone={percentTone(window.percent)}
         cx={size / 2}
         cy={size / 2}
         r={radius}
@@ -307,6 +316,25 @@ function BadgeRing({ percent, tone, label }: { percent: number; tone: UsageTone;
         fill="none"
         strokeDasharray={`${dash} ${circumference - dash}`}
         strokeDashoffset={circumference / 4}
+        strokeLinecap="round"
+      />
+      <circle
+        className={styles.ringTimeTrack}
+        cx={size / 2}
+        cy={size / 2}
+        r={timeRadius}
+        strokeWidth={timeStroke}
+        fill="none"
+      />
+      <circle
+        className={styles.ringTimeBar}
+        cx={size / 2}
+        cy={size / 2}
+        r={timeRadius}
+        strokeWidth={timeStroke}
+        fill="none"
+        strokeDasharray={`${timeDash} ${timeCircumference - timeDash}`}
+        strokeDashoffset={timeCircumference / 4}
         strokeLinecap="round"
       />
       <text

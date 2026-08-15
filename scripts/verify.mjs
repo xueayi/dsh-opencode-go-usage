@@ -12,7 +12,7 @@
 import { parseUsageBody, fetchOpenCodeUsage } from '../lib/usage.js'
 import {
   formatRelative, formatRemaining, formatRemainingCompact, percentTone,
-  stateHasUsage, usageWindows,
+  remainingRatio, stateHasUsage, usageWindows, WINDOW_PERIOD_MS,
 } from '../lib/client/usage-model.js'
 
 let failures = 0
@@ -105,6 +105,16 @@ console.log('dock projections')
   check('relative minutes', formatRelative(now, now + 5 * 60_000) === '5分钟前')
   check('relative hours', formatRelative(now, now + 3 * 3_600_000) === '3小时前')
   check('relative days', formatRelative(now, now + 50 * 3_600_000) === '2天前')
+
+  check('rolling period is 5h', WINDOW_PERIOD_MS.rolling === 5 * 60 * 60 * 1000)
+  check('weekly period is 7d', WINDOW_PERIOD_MS.weekly === 7 * 24 * 60 * 60 * 1000)
+  check('monthly period is 30d', WINDOW_PERIOD_MS.monthly === 30 * 24 * 60 * 60 * 1000)
+  check('remaining half', remainingRatio(now + 30 * 60 * 1000, 60 * 60 * 1000, now) === 0.5)
+  check('remaining full clamps to 1', remainingRatio(now + 90 * 60 * 1000, 60 * 60 * 1000, now) === 1)
+  check('remaining expired is 0', remainingRatio(now - 1000, 60 * 60 * 1000, now) === 0)
+  check('remaining guards bad inputs', remainingRatio(Number.NaN, 60 * 60 * 1000, now) === 0)
+  const view = usageWindows({ rolling: { status: 'ok', percent: 51, resetsAt: '2026-08-15T19:40:30.751Z' } })[0]
+  check('window carries its period', view?.periodMs === WINDOW_PERIOD_MS.rolling, String(view?.periodMs))
 }
 
 if (failures > 0) {

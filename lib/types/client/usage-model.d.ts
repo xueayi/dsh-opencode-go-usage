@@ -19,11 +19,23 @@ export interface WindowView {
     percent: number;
     /** Epoch millis when the window resets. */
     resetsAt: number;
+    /** Full window period in millis (drives the remaining-time ring). */
+    periodMs: number;
 }
 /** Tone thresholds for usage rings; `danger` ≥ 85%, `warn` ≥ 60%. */
 export type UsageTone = 'ok' | 'warn' | 'danger';
+/** Window periods: rolling is a fixed 5h, weekly a fixed 7d; monthly uses a
+ *  30-day approximation of the subscription cycle (the API only reports the
+ *  next reset instant, so the exact cycle cannot be derived). */
+export declare const WINDOW_PERIOD_MS: Record<WindowView['key'], number>;
 /** Project a usage sample into ordered window views (missing windows dropped). */
 export declare function usageWindows(usage: OpenCodeUsageData | undefined): WindowView[];
+/**
+ * Fraction of the window period still left before the reset, 0–1; the
+ * badge's inner ring draws this as its remaining arc. Returns 0 once the
+ * reset instant has passed (the next refresh will report a fresh window).
+ */
+export declare function remainingRatio(resetsAt: number, periodMs: number, now: number): number;
 /** Tone for a used percentage (invalid numbers clamp to `ok`). */
 export declare function percentTone(percent: number): UsageTone;
 /** Compact Chinese countdown until a reset instant. */

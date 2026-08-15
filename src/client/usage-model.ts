@@ -21,6 +21,8 @@ export interface WindowView {
   percent: number
   /** Epoch millis when the window resets. */
   resetsAt: number
+  /** Full window period in millis (drives the remaining-time ring). */
+  periodMs: number
 }
 
 /** Tone thresholds for usage rings; `danger` ≥ 85%, `warn` ≥ 60%. */
@@ -30,6 +32,15 @@ const WINDOW_META: Record<WindowView['key'], { label: string; sublabel: string }
   rolling: { label: '5h 滚动', sublabel: '5h Rolling' },
   weekly: { label: '本周', sublabel: 'Weekly' },
   monthly: { label: '本月', sublabel: 'Monthly' },
+}
+
+/** Window periods: rolling is a fixed 5h, weekly a fixed 7d; monthly uses a
+ *  30-day approximation of the subscription cycle (the API only reports the
+ *  next reset instant, so the exact cycle cannot be derived). */
+export const WINDOW_PERIOD_MS: Record<WindowView['key'], number> = {
+  rolling: 5 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+  monthly: 30 * 24 * 60 * 60 * 1000,
 }
 
 /** Project a usage sample into ordered window views (missing windows dropped). */
@@ -45,9 +56,22 @@ export function usageWindows(usage: OpenCodeUsageData | undefined): WindowView[]
       sublabel: WINDOW_META[key].sublabel,
       percent: window.percent,
       resetsAt: Date.parse(window.resetsAt),
+      periodMs: WINDOW_PERIOD_MS[key],
     })
   }
   return views
+}
+
+/**
+ * Fraction of the window period still left before the reset, 0–1; the
+ * badge's inner ring draws this as its remaining arc. Returns 0 once the
+ * reset instant has passed (the next refresh will report a fresh window).
+ */
+export function remainingRatio(resetsAt: number, periodMs: number, now: number): number {
+  if (!Number.isFinite(resetsAt) || !Number.isFinite(periodMs) || periodMs <= 0) return 0
+  const remaining = resetsAt - now
+  if (remaining <= 0) return 0
+  return Math.min(1, remaining / periodMs)
 }
 
 /** Tone for a used percentage (invalid numbers clamp to `ok`). */
