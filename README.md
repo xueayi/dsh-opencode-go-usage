@@ -49,6 +49,8 @@ manually in `~/.dsh/.credentials.yaml` or an environment variable:
 
 ## Usage dock
 
+<img src="img/example.png" width="340" alt="Usage dock screenshot" />
+
 A glassy floating dock at the bottom-right corner (the web shell owns no
 bottom-right slot; mounted through a body portal):
 
