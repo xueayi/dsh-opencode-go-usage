@@ -44,6 +44,24 @@ manually in `~/.dsh/.credentials.yaml` or an environment variable:
 | `refreshMs` | number | `60000` | auto-refresh interval |
 | `timeoutMs` | number | `10000` | per-request timeout |
 
+## Usage dock
+
+A glassy floating dock at the bottom-right corner (the web shell owns no
+bottom-right slot; mounted through a body portal):
+
+- **Badge (collapsed)**: three mini double rings show all three quota
+  windows at a glance — the outer ring is the used percent
+  (threshold-colored: green <60% / orange ≥60% / red ≥85%), the inner ring
+  is the window's remaining time until its next reset (brand blue, shrinking
+  live with the window period); beside them an exact 5h-rolling countdown
+  (`↻3h25m`) and a live health dot.
+- **Panel (click to expand)**: one row per window (5h Rolling / Weekly /
+  Monthly) with a usage ring, used/remaining percent, and a live reset
+  countdown; the footer holds the update timestamp, a "Console ↗" link to
+  the OpenCode Go console, and a manual refresh button.
+- Unconfigured/error states render inline with configuration guidance; a
+  failed fetch never blanks the dock.
+
 ## Display stability
 
 Data and health are decoupled: when a refresh fails (timeout, API error), the

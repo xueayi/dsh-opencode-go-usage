@@ -1,6 +1,6 @@
 {
   "name": "@xueayi/dsh-opencode-go-usage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenCode Go plan usage monitor for DeepSeek Harness: real-time 5h-rolling / weekly / monthly quota in a floating web dock",
   "type": "module",
   "main": "lib/index.js",
