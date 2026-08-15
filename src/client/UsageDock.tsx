@@ -174,6 +174,15 @@ export function UsageDock(): ReactElement {
                 <span className={styles.staleNote}> · 刷新失败，显示上次数据</span>
               )}
             </span>
+            <a
+              className={styles.consoleLink}
+              href="https://opencode.ai/auth"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="在浏览器中打开 OpenCode Go 控制台"
+            >
+              控制台 <span aria-hidden="true">↗</span>
+            </a>
             <button
               type="button"
               className={styles.refreshButton}
