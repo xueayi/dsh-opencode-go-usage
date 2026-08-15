@@ -1,0 +1,363 @@
+/* OpenCode Go usage dock. All surfaces follow DSH design tokens
+   (--dsw-alias-*), so the dock blends with either theme; the glassy panel
+   uses backdrop blur over the conversation surface. */
+
+.badge {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483000;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 42px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-module-platform) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
+}
+
+.badge:hover {
+  border-color: var(--dsw-alias-border-l3);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
+}
+
+/* One quota window inside the badge: a fixed-size mini ring with the percent
+   centered inside (SVG dimensions are fixed, so nothing can overlap). */
+.badgeRing {
+  flex: none;
+}
+
+.badgeRingText {
+  fill: var(--dsw-alias-label-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 5h-rolling reset countdown, separated from the quota rings. The icon and
+   the value are independent nowrap elements, so they can never overlap. */
+.badgeCountdown {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 3px;
+  padding-left: 10px;
+  border-left: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeCountdownIcon {
+  flex: none;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.badgeCountdownValue {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.badgeText {
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Health dot: unknown (connecting), ok (live), bad (error/unconfigured). */
+.healthUnknown {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-tertiary);
+}
+
+.healthOk {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-success-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-success-primary) 22%, transparent);
+  animation: usage-pulse 2.4s ease-in-out infinite;
+}
+
+.healthBad {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-error-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-error-primary) 22%, transparent);
+}
+
+@keyframes usage-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.panel {
+  position: fixed;
+  right: 18px;
+  bottom: 72px;
+  z-index: 2147483000;
+  width: 362px;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-module-platform) 82%, transparent);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+  overflow: hidden;
+  transform-origin: bottom right;
+  animation: usage-pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes usage-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+
+.panelTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.panelLogo {
+  color: var(--dsw-alias-brand-primary);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.healthLabel {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.iconButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.windows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+}
+
+.windowRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  transition: background 120ms ease;
+}
+
+.windowRow:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.ring {
+  flex: none;
+}
+
+.ringTrack {
+  stroke: var(--dsw-alias-border-l2);
+}
+
+.ringBar[data-tone='ok'] {
+  stroke: var(--dsw-alias-state-success-primary);
+}
+
+.ringBar[data-tone='warn'] {
+  stroke: var(--dsw-alias-state-warn-primary);
+}
+
+.ringBar[data-tone='danger'] {
+  stroke: var(--dsw-alias-state-error-primary);
+}
+
+.ringText {
+  fill: var(--dsw-alias-label-primary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.windowBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.windowName {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.windowName > span:first-child {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.windowSublabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.windowMeta {
+  display: flex;
+  gap: 10px;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.usedText {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.remainingText {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown {
+  margin-top: 2px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyNote {
+  margin: 0;
+  padding: 14px 10px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.errorBox {
+  margin: 10px 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 38%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 8%, transparent);
+}
+
+.errorTitle {
+  margin: 0;
+  color: var(--dsw-alias-state-warn-primary);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.errorDetail {
+  margin: 6px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12.5px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.errorHint {
+  margin: 8px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.panelFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px 12px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+.updatedAt {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.refreshButton {
+  padding: 5px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: var(--dsw-alias-button-floating-fill);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background: var(--dsw-alias-button-floating-hover);
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.refreshButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

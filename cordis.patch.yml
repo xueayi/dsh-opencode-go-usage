@@ -1,0 +1,28 @@
+# dsh-opencode-go-usage bundle patch: mounts the OpenCode Go usage monitor
+# into the host composition of a dsh profile. The plugin periodically queries
+# the official OpenCode Go quota API (GET https://opencode.ai/zen/go/v1/usage
+# with the regular Anthropic-compatible API key) and serves the cached sample
+# to the browser client, which renders a floating quota dock.
+#
+# Install: `dsh plugin --profile <name> add <this package>` (npm or a local
+# path). The `dsh plugin` command pnpm-installs the package into the profile
+# and reconciles it into the profile's `dsh.profile.bundles` layer list.
+#
+# Credentials: the plugin resolves the API key through `ctx.credentials`
+# (env / user-env layers, e.g. ~/.dsh/.credentials.yaml) under the reference
+# named by `apiKeyEnv`; alternatively set `apiKey` directly (not recommended
+# for checked-in configs).
+- insert:
+    - id: opencode-go-usage
+      # Node-resolvable package name — must stay in sync with package.json
+      # `name`. Quoted because `@` is a reserved indicator in YAML and cannot
+      # open a plain scalar.
+      name: '@nanmicoder/dsh-opencode-go-usage'
+      config:
+        # Credential reference resolved per refresh via ctx.credentials.
+        apiKeyEnv: OPENCODE_GO_API_KEY
+        # Official OpenCode Go quota endpoint (no workspace id / cookie needed).
+        endpoint: https://opencode.ai/zen/go/v1/usage
+        # Auto-refresh interval; the web dock also offers a manual refresh.
+        refreshMs: 60000
+        timeoutMs: 10000

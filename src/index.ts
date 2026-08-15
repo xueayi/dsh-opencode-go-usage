@@ -1,0 +1,187 @@
+/**
+ * OpenCode Go usage monitor for DeepSeek Harness.
+ *
+ * A host-plane plugin that periodically queries the official OpenCode Go
+ * quota API and serves the cached sample to the browser client through two
+ * web routes:
+ *
+ * - `GET  /plugins/dsh-opencode-go-usage/state`   — current cached sample
+ * - `POST /plugins/dsh-opencode-go-usage/refresh` — force an immediate refresh
+ *
+ * The API key is resolved per refresh through `ctx.credentials` under the
+ * configurable `apiKeyEnv` reference (env / user-env layers, e.g.
+ * `~/.dsh/.credentials.yaml`), so a changed credential reaches the next
+ * refresh without a restart and no secret ever appears in configuration.
+ * The browser dock polls `state` and renders the three quota windows
+ * (5h-rolling / weekly / monthly) as a floating, theme-aware panel.
+ *
+ * Installation (bundle): `dsh plugin --profile <name> add @nanmicoder/dsh-opencode-go-usage`
+ * (or a local path). The bundle patch mounts this plugin row into the host
+ * composition; the routes register lazily so webless profiles stay clean.
+ *
+ * @module dsh-opencode-go-usage
+ */
+
+import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+// Declaration merge only: makes ctx.credentials visible.
+import type {} from '@deepseek-ai/dsh-credentials'
+import type { CredentialProvider } from '@deepseek-ai/dsh-credentials'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { fetchOpenCodeUsage } from './usage.ts'
+import type { OpenCodeUsageState } from './types.ts'
+
+/**
+ * Structural slice of the web server service, compatible with both the
+ * published `dsh-host-webserver@0.0.1-rc.1` (`ctx.httpServer` /
+ * `HttpServerService`) and the renamed `webServer` / `WebServer` in later
+ * builds: the beta transition renames the service without changing the route
+ * registration shape.
+ */
+interface WebRouteHost {
+  register(route: {
+    kind: 'exact' | 'prefix'
+    path: string
+    handler: (req: IncomingMessage, res: ServerResponse) => void | Promise<void>
+  }): () => void
+}
+
+/** Web-server service key candidates, newest first. */
+const WEB_SERVER_KEYS = ['webServer', 'httpServer'] as const
+
+export const name = 'opencode-go-usage'
+export const inject: readonly string[] = []
+
+/** Plugin configuration. */
+export interface Config {
+  /**
+   * Credential reference resolved per refresh through `ctx.credentials`
+   * (default `OPENCODE_GO_API_KEY`).
+   */
+  apiKeyEnv?: string
+  /** Direct API key fallback when the credential reference is unconfigured. */
+  apiKey?: string
+  /** Official OpenCode Go quota endpoint (default `https://opencode.ai/zen/go/v1/usage`). */
+  endpoint?: string
+  /** Auto-refresh interval in millis (default `60000`). */
+  refreshMs?: number
+  /** Per-request timeout in millis (default `10000`). */
+  timeoutMs?: number
+}
+
+export const Config: z<Config> = z.object({
+  apiKeyEnv: z.string().default('OPENCODE_GO_API_KEY'),
+  apiKey: z.string(),
+  endpoint: z.string().default('https://opencode.ai/zen/go/v1/usage'),
+  refreshMs: z.natural().min(10_000).default(60_000),
+  timeoutMs: z.natural().min(1_000).default(10_000),
+})
+
+/** Resolve the API key for one refresh: direct config, then credentials. */
+async function resolveApiKey(ctx: Context, config: Config): Promise<string | undefined> {
+  if (config.apiKey !== undefined && config.apiKey !== '') return config.apiKey
+  const credentials = ctx.get('credentials') as CredentialProvider | undefined
+  if (credentials === undefined) return undefined
+  const resolved = await credentials.resolve(credentialRef(config.apiKeyEnv ?? 'OPENCODE_GO_API_KEY'))
+  return resolved?.value
+}
+
+export function apply(ctx: Context, config: Config): void {
+  const endpoint = config.endpoint ?? 'https://opencode.ai/zen/go/v1/usage'
+  const timeoutMs = config.timeoutMs ?? 10_000
+
+  /** The last sample; served verbatim to the web client. */
+  let current: OpenCodeUsageState = { status: 'unconfigured', fetchedAt: 0, error: '尚未刷新' }
+  /** In-flight refresh, so concurrent triggers share one request. */
+  let refreshing: Promise<OpenCodeUsageState> | null = null
+
+  /** Run one refresh and publish its sample; concurrent calls coalesce. */
+  const refresh = (): Promise<OpenCodeUsageState> => {
+    if (refreshing !== null) return refreshing
+    refreshing = (async (): Promise<OpenCodeUsageState> => {
+      const fetchedAt = Date.now()
+      const apiKey = await resolveApiKey(ctx, config)
+      if (apiKey === undefined) {
+        return {
+          status: 'unconfigured',
+          fetchedAt,
+          error: `未找到 API Key：请配置 apiKey，或在凭据中设置 ${config.apiKeyEnv ?? 'OPENCODE_GO_API_KEY'}`,
+        }
+      }
+      try {
+        const usage = await fetchOpenCodeUsage(endpoint, apiKey, timeoutMs)
+        return { status: 'ok', fetchedAt, usage }
+      } catch (error) {
+        return {
+          status: 'error',
+          fetchedAt,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      }
+    })().then((next) => {
+      current = next
+      return next
+    }).finally(() => {
+      refreshing = null
+    })
+    return refreshing
+  }
+
+  // Refresh immediately on mount and then on the configured interval.
+  void refresh()
+  const timer = globalThis.setInterval(() => {
+    void refresh()
+  }, config.refreshMs ?? 60_000)
+  ctx.effect(() => () => {
+    globalThis.clearInterval(timer)
+  }, 'opencode-go-usage: refresh timer')
+
+  /** Send one JSON state payload with no-store caching. */
+  const sendJson = (res: ServerResponse, payload: unknown, status = 200): void => {
+    const body = JSON.stringify(payload)
+    res.writeHead(status, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    })
+    res.end(body)
+  }
+
+  // The web server may bind after this plugin under concurrent activation;
+  // register the routes lazily, now and on each service binding event.
+  let webRegistered = false
+  const registerWebSurface = (): void => {
+    if (webRegistered) return
+    const webServer = (ctx.get(WEB_SERVER_KEYS[0]) ?? ctx.get(WEB_SERVER_KEYS[1])) as WebRouteHost | undefined
+    if (webServer === undefined) return
+    webRegistered = true
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-opencode-go-usage/state',
+      handler: (_req, res) => {
+        sendJson(res, current)
+      },
+    }), 'opencode-go-usage: state route')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: '/plugins/dsh-opencode-go-usage/refresh',
+      handler: async (_req, res) => {
+        try {
+          sendJson(res, await refresh())
+        } catch (error) {
+          ctx.logger.warn(`opencode-go-usage: refresh failed: ${String(error)}`)
+          sendJson(res, { status: 'error', fetchedAt: Date.now(), error: String(error) }, 500)
+        }
+      },
+    }), 'opencode-go-usage: refresh route')
+  }
+
+  registerWebSurface()
+  ctx.on('internal/service', (serviceName) => {
+    if (WEB_SERVER_KEYS.includes(serviceName as (typeof WEB_SERVER_KEYS)[number])) {
+      registerWebSurface()
+    }
+  })
+}
