@@ -75,6 +75,14 @@ yellow and a quiet "refresh failed, showing previous data" note appears in
 the panel footer. The display is never blanked; error / unconfigured states
 appear only before the first successful fetch.
 
+The status dot and the manual refresh action reuse the shared
+`dsh-client-ui-primitives` (`StateDot` / `Button`) so the dock's affordances
+stay visually consistent with the rest of DSH. The dock also honors
+`prefers-reduced-motion` (a reduced-motion environment skips the pop and ring
+tweens and closes the panel without the exit animation), and the floating
+badge / panel are offset by the viewport's safe-area insets so they never sit
+under a notch or home indicator.
+
 ## Model Experience
 
 ### Request surface and condition

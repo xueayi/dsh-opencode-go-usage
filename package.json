@@ -1,6 +1,6 @@
 {
   "name": "@xueayi/dsh-opencode-go-usage",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "OpenCode Go plan usage monitor for DeepSeek Harness: real-time 5h-rolling / weekly / monthly quota in a floating web dock",
   "type": "module",
   "main": "lib/index.js",
@@ -61,14 +61,16 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime"
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-primitives"
       ],
       "platform": "web"
     }
   },
   "dshClient": {
     "inject": [
-      "@deepseek-ai/dsh-client-runtime"
+      "@deepseek-ai/dsh-client-runtime",
+      "@deepseek-ai/dsh-client-ui-primitives"
     ],
     "platform": "web"
   },
@@ -85,6 +87,7 @@
     "@deepseek-ai/cordis": "^4.0.1-rc.1",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.6",
     "react": "^18.2.0"
   },
   "devDependencies": {

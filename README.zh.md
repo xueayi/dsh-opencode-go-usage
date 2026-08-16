@@ -67,6 +67,11 @@ Key，之后无需任何配置即可使用。
 显示上次数据」的淡提示，不打断显示；只有从未成功获取过时才显示错误/未配置
 提示。
 
+状态点与「立即刷新」按钮复用 DSH 共享原语 `dsh-client-ui-primitives`（`StateDot` /
+`Button`），与全站视觉保持一致。用量坞还遵循 `prefers-reduced-motion`：在减少动
+效环境下跳过弹入与圆环过渡、关闭面板时不再播放退场动画；浮窗徽章与面板按视口
+安全区（safe-area inset）内缩，避免被刘海屏或 Home 指示区遮挡。
+
 ## Model Experience
 
 ### Request surface and condition
