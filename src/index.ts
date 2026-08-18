@@ -29,8 +29,8 @@ import type {} from '@deepseek-ai/dsh-credentials'
 import type { CredentialProvider } from '@deepseek-ai/dsh-credentials'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { fetchOpenCodeUsage } from './usage.ts'
-import type { OpenCodeUsageData, OpenCodeUsageHealth, OpenCodeUsageState } from './types.ts'
+import { fetchOpenCodeUsage, OpenCodeUsageFetchError } from './usage.ts'
+import type { OpenCodeUsageData, OpenCodeUsageError, OpenCodeUsageHealth, OpenCodeUsageState } from './types.ts'
 
 /**
  * Structural slice of the web server service, compatible with both the
@@ -87,6 +87,23 @@ async function resolveApiKey(ctx: Context, config: Config): Promise<string | und
   return resolved?.value
 }
 
+/**
+ * Normalize any refresh failure into a structured health error. Backwards
+ * compatibility: plain `Error`s (including future client mismatches) map to
+ * the connect code so their message still reaches the user as `detail`.
+ */
+function toHealthError(error: unknown): OpenCodeUsageError {
+  if (error instanceof OpenCodeUsageFetchError) {
+    return { code: error.code, params: error.params }
+  }
+  return {
+    code: 'connect',
+    params: {
+      detail: error instanceof Error && error.message !== '' ? error.message : String(error),
+    },
+  }
+}
+
 export function apply(ctx: Context, config: Config): void {
   const endpoint = config.endpoint ?? 'https://opencode.ai/zen/go/v1/usage'
   const timeoutMs = config.timeoutMs ?? 10_000
@@ -97,7 +114,7 @@ export function apply(ctx: Context, config: Config): void {
   let health: OpenCodeUsageHealth = {
     status: 'unconfigured',
     fetchedAt: 0,
-    error: '尚未刷新',
+    error: { code: 'idle' },
   }
   /** In-flight refresh, so concurrent triggers share one request. */
   let refreshing: Promise<OpenCodeUsageState> | null = null
@@ -118,7 +135,7 @@ export function apply(ctx: Context, config: Config): void {
         health = {
           status: 'unconfigured',
           fetchedAt,
-          error: '未找到 OpenCode Go API Key：请在 Web 设置 → 模型 中选择「官方渠道 · OpenCode Go」并填入 API Key',
+          error: { code: 'unconfigured' },
         }
         return buildState()
       }
@@ -129,12 +146,10 @@ export function apply(ctx: Context, config: Config): void {
       } catch (error) {
         // Silent degradation: keep showing the last successful sample; only
         // the health record changes (debug-level log, no user-facing noise).
-        health = {
-          status: 'error',
-          fetchedAt,
-          error: error instanceof Error ? error.message : String(error),
-        }
-        ctx.logger.debug(`opencode-go-usage: refresh failed: ${health.error}`)
+        const failure = toHealthError(error)
+        health = { status: 'error', fetchedAt, error: failure }
+        const detail = failure.code === 'connect' ? failure.params?.detail : ''
+        ctx.logger.debug(`opencode-go-usage: refresh failed: ${failure.code}${detail ? ` (${detail})` : ''}`)
       }
       return buildState()
     })().then((next) => next).finally(() => {

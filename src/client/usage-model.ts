@@ -1,21 +1,33 @@
 /**
  * Pure display projections for the OpenCode Go usage dock.
  *
- * No React, no DOM: every function here is trivially unit-testable, mirroring
- * the host-side purity split. The dock renders the three quota windows as
- * rings with a live reset countdown; tones follow a soft threshold so the
- * panel stays calm until usage climbs.
+ * No React, no DOM, no DSH service: every function here is trivially
+ * unit-testable, mirroring the host-side purity split. Text lives in the
+ * plugin's locale dictionary, so each projection takes a small translate
+ * function `t(key, params)` (the bound `ctx.locale.bind(USAGE_NS)` at the
+ * call site, or a fixture translator in tests). The dock renders the three
+ * quota windows as rings with a live reset countdown; tones follow a soft
+ * threshold so the panel stays calm until usage climbs.
  * @module dsh-opencode-go-usage/client/model
  */
 
 import type { OpenCodeUsageData, OpenCodeUsageState } from '../types.ts'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+
+/**
+ * Translator shape the projections consume: the plugin's namespace-bound
+ * `t`, type-only imported (erased at runtime, the module stays dependency
+ * free). Typing it as `TranslateNS` lets the bound `ctx.locale.bind` value
+ * flow straight in and keeps every key checked against the dictionaries.
+ */
+export type TranslateFn = TranslateNS<'opencode-usage'>
 
 /** One quota window in display order. */
 export interface WindowView {
   key: 'rolling' | 'weekly' | 'monthly'
-  /** Short Chinese label for the panel row. */
+  /** Localized label for the panel row. */
   label: string
-  /** English label kept for recognizability. */
+  /** English label kept for recognizability (rendered only in zh). */
   sublabel: string
   /** Percent already used, 0–100. */
   percent: number
@@ -28,10 +40,11 @@ export interface WindowView {
 /** Tone thresholds for usage rings; `danger` ≥ 85%, `warn` ≥ 60%. */
 export type UsageTone = 'ok' | 'warn' | 'danger'
 
-const WINDOW_META: Record<WindowView['key'], { label: string; sublabel: string }> = {
-  rolling: { label: '5h 滚动', sublabel: '5h Rolling' },
-  weekly: { label: '本周', sublabel: 'Weekly' },
-  monthly: { label: '本月', sublabel: 'Monthly' },
+/** English recognizability terms, shown under the zh labels. */
+const WINDOW_SUBLABEL: Record<WindowView['key'], string> = {
+  rolling: '5h Rolling',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
 }
 
 /** Window periods: rolling is a fixed 5h, weekly a fixed 7d; monthly uses a
@@ -43,8 +56,13 @@ export const WINDOW_PERIOD_MS: Record<WindowView['key'], number> = {
   monthly: 30 * 24 * 60 * 60 * 1000,
 }
 
-/** Project a usage sample into ordered window views (missing windows dropped). */
-export function usageWindows(usage: OpenCodeUsageData | undefined): WindowView[] {
+/**
+ * Project a usage sample into ordered window views (missing windows dropped).
+ * Window names come from the locale dictionary via `t`.
+ * @param usage - the last successful sample (or undefined).
+ * @param t - translator for the window labels.
+ */
+export function usageWindows(usage: OpenCodeUsageData | undefined, t: TranslateFn): WindowView[] {
   if (usage === undefined) return []
   const views: WindowView[] = []
   for (const key of ['rolling', 'weekly', 'monthly'] as const) {
@@ -52,8 +70,8 @@ export function usageWindows(usage: OpenCodeUsageData | undefined): WindowView[]
     if (window === undefined) continue
     views.push({
       key,
-      label: WINDOW_META[key].label,
-      sublabel: WINDOW_META[key].sublabel,
+      label: t(`window.${key}`),
+      sublabel: WINDOW_SUBLABEL[key],
       percent: window.percent,
       resetsAt: Date.parse(window.resetsAt),
       periodMs: WINDOW_PERIOD_MS[key],
@@ -82,26 +100,28 @@ export function percentTone(percent: number): UsageTone {
   return 'ok'
 }
 
-/** Compact Chinese countdown until a reset instant. */
-export function formatRemaining(resetsAt: number, now: number): string {
+/** Countdown until a reset instant, localized via `t`. */
+export function formatRemaining(resetsAt: number, now: number, t: TranslateFn): string {
   const diff = resetsAt - now
   if (!Number.isFinite(diff)) return '—'
-  if (diff <= 0) return '已重置'
+  if (diff <= 0) return t('countdown.reset')
   const totalMinutes = Math.floor(diff / 60_000)
   const days = Math.floor(totalMinutes / 1440)
   const hours = Math.floor((totalMinutes % 1440) / 60)
   const minutes = totalMinutes % 60
-  if (days > 0) return `${days}天${hours}小时`
-  if (hours > 0) return `${hours}小时${minutes}分`
-  if (minutes > 0) return `${minutes}分${Math.max(0, Math.floor((diff % 60_000) / 1000))}秒`
-  return `${Math.max(0, Math.floor(diff / 1000))}秒`
+  if (days > 0) return t('countdown.daysHours', { days, hours })
+  if (hours > 0) return t('countdown.hoursMinutes', { hours, minutes })
+  if (minutes > 0) return t('countdown.minutesSeconds', { minutes, seconds: Math.max(0, Math.floor((diff % 60_000) / 1000)) })
+  return t('countdown.seconds', { seconds: Math.max(0, Math.floor(diff / 1000)) })
 }
 
-/** Minimal countdown for tight surfaces (the dock badge): `4d3h`, `3h25m`, `12m05s`, `9s`. */
-export function formatRemainingCompact(resetsAt: number, now: number): string {
+/** Minimal countdown for tight surfaces (the dock badge): uses the shared
+ *  Latin units `4d3h`/`3h25m`/`12m05s`/`9s`; only the expired state is
+ *  localized. */
+export function formatRemainingCompact(resetsAt: number, now: number, t: TranslateFn): string {
   const diff = resetsAt - now
   if (!Number.isFinite(diff)) return '—'
-  if (diff <= 0) return '已重置'
+  if (diff <= 0) return t('countdown.reset')
   const totalMinutes = Math.floor(diff / 60_000)
   const days = Math.floor(totalMinutes / 1440)
   const hours = Math.floor((totalMinutes % 1440) / 60)
@@ -113,17 +133,17 @@ export function formatRemainingCompact(resetsAt: number, now: number): string {
   return `${seconds}s`
 }
 
-/** Human-readable age of a sample. */
-export function formatRelative(fetchedAt: number, now: number): string {
+/** Human-readable age of a sample, localized via `t`. */
+export function formatRelative(fetchedAt: number, now: number, t: TranslateFn): string {
   const diff = Math.max(0, now - fetchedAt)
   const seconds = Math.floor(diff / 1000)
-  if (seconds < 10) return '刚刚'
-  if (seconds < 60) return `${seconds}秒前`
+  if (seconds < 10) return t('relative.justNow')
+  if (seconds < 60) return t('relative.secondsAgo', { seconds })
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}分钟前`
+  if (minutes < 60) return t('relative.minutesAgo', { minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}小时前`
-  return `${Math.floor(hours / 24)}天前`
+  if (hours < 24) return t('relative.hoursAgo', { hours })
+  return t('relative.daysAgo', { days: Math.floor(hours / 24) })
 }
 
 /** Whether a state carries usable quota windows (kept across failed refreshes). */

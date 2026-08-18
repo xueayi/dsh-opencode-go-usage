@@ -72,6 +72,20 @@ Key，之后无需任何配置即可使用。
 效环境下跳过弹入与圆环过渡、关闭面板时不再播放退场动画；浮窗徽章与面板按视口
 安全区（safe-area inset）内缩，避免被刘海屏或 Home 指示区遮挡。
 
+
+## 国际化
+
+用量坞支持中英双语（简体中文 / English），当前语言跟随 dsh 自身的
+`locale.preference`（宿主设置中的 `$DSH_HOME/settings.yaml`，namespace `locale`）；
+未显式设置时回退到浏览器语言，与 Web 界面其余部分完全一致。
+在 Web 设置 → 通用 → 语言中切换语言后，用量坞会立即重新渲染——无需重载或刷新。
+
+所有文案都位于插件自己的 locale namespace（`opencode-usage`，通过 `ctx.locale`
+注册的 zh/en 双语词典）；窗口名称、倒计时、相对时间、无障碍标签以及宿主上报的
+错误信息均已覆盖。宿主错误以稳定的机器码（`connect`、`timeout`、`unauthorized`、
+`http`、`parse`、`no-data`、`unconfigured`）发送给浏览器，由客户端本地化——
+单一翻译来源，宿主侧不感知语言。
+
 ## Model Experience
 
 ### Request surface and condition

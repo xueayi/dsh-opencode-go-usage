@@ -9,12 +9,31 @@
  * and follows DSH design tokens (`--dsw-alias-*`), so it blends with either
  * theme. Reuses the shared `StateDot` and `Button` primitives so the dock's
  * affordances stay visually consistent with the rest of DSH.
+ *
+ * Copy is locale-aware: `t` is the namespace-bound translate (typed to the
+ * plugin's dictionary) and `locale` the LocaleRuntime, whose active language
+ * follows dsh's `locale.preference` with a browser fallback. A locale switch
+ * bumps the runtime revision, which this component watches through
+ * `useSyncExternalStore` to re-render in place; the bound `t` reads the new
+ * active locale on the next render, so the whole dock follows instantly.
  * @module dsh-opencode-go-usage/client/dock
  */
 import type { ReactElement } from 'react';
+import type { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client';
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import { type WindowView } from './usage-model.ts';
+/**
+ * Root dock props: the namespace-bound translator and the locale service.
+ * Supplied by the browser plugin mount (`client/index.tsx`).
+ */
+export interface UsageDockProps {
+    /** Namespace-bound translate for this plugin's dictionary. */
+    t: TranslateNS<'opencode-usage'>;
+    /** Locale runtime carrying the live zh/en preference. */
+    locale: LocaleRuntime;
+}
 /** Root state: the dock itself. */
-export declare function UsageDock(): ReactElement;
+export declare function UsageDock({ t, locale }: UsageDockProps): ReactElement;
 /**
  * Double ring for one quota window, shared by the collapsed badge (size 36)
  * and the expanded panel row (size 50). The outer ring is the used percent
@@ -28,9 +47,11 @@ export declare function UsageDock(): ReactElement;
  * @param window - the projected quota window view (percent, reset, periodMs).
  * @param now - current epoch ms (drives the inner remaining-time arc).
  * @param size - outer diameter in px (50 for the panel, 36 for the badge).
+ * @param t - namespace-bound translate for the aria label.
  */
-export declare function Ring({ window, now, size }: {
+export declare function Ring({ window, now, size, t }: {
     window: WindowView;
     now: number;
     size?: number;
+    t: TranslateNS<'opencode-usage'>;
 }): ReactElement;
