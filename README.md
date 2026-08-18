@@ -83,7 +83,6 @@ tweens and closes the panel without the exit animation), and the floating
 badge / panel are offset by the viewport's safe-area insets so they never sit
 under a notch or home indicator.
 
-
 ## Internationalization
 
 The dock is fully bilingual (简体中文 / English). The active language follows
