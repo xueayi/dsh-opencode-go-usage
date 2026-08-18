@@ -83,6 +83,23 @@ tweens and closes the panel without the exit animation), and the floating
 badge / panel are offset by the viewport's safe-area insets so they never sit
 under a notch or home indicator.
 
+## Internationalization
+
+The dock is fully bilingual (简体中文 / English). The active language follows
+dsh's own `locale.preference` in the host settings (`$DSH_HOME/settings.yaml`,
+namespace `locale`); when no explicit preference is set, the browser's
+language is used as a fallback, exactly like the rest of the Web UI. Switching
+the language in Web Settings → General → Language re-renders the dock
+immediately — no reload, no refresh.
+
+All copy lives in the plugin's locale namespace (`opencode-usage`, zh/en
+dictionaries registered through `ctx.locale`); window names, countdowns,
+relative timestamps, accessibility labels, and the host-reported failure
+messages are covered. Host errors are sent to the browser as stable machine
+codes (`connect`, `timeout`, `unauthorized`, `http`, `parse`, `no-data`,
+`unconfigured`), and the client localizes them — one translation source, no
+language logic on the host.
+
 ## Model Experience
 
 ### Request surface and condition

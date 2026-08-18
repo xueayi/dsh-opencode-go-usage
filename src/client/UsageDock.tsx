@@ -2,19 +2,29 @@
  * OpenCode Go usage dock — the whole browser surface.
  *
  * A bottom-right floating dock: a compact glassy badge shows all three quota
- * windows (滚/周/月) with threshold-colored percentages plus the 5h-rolling
- * window's live reset countdown; clicking it toggles a glassy panel with the
+ * windows (rolling/weekly/monthly) with threshold-colored percentages plus
+ * the 5h-rolling window's live reset countdown; clicking it toggles a glassy
+ * panel with the
  * full window rows, a manual refresh button, and clear error / unconfigured
  * states. The dock is mounted through a body portal by `client/index.tsx`
  * and follows DSH design tokens (`--dsw-alias-*`), so it blends with either
  * theme. Reuses the shared `StateDot` and `Button` primitives so the dock's
  * affordances stay visually consistent with the rest of DSH.
+ *
+ * Copy is locale-aware: `t` is the namespace-bound translate (typed to the
+ * plugin's dictionary) and `locale` the LocaleRuntime, whose active language
+ * follows dsh's `locale.preference` with a browser fallback. A locale switch
+ * bumps the runtime revision, which this component watches through
+ * `useSyncExternalStore` to re-render in place; the bound `t` reads the new
+ * active locale on the next render, so the whole dock follows instantly.
  * @module dsh-opencode-go-usage/client/dock
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore, useState } from 'react'
 import type { ReactElement } from 'react'
 import { StateDot, Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { OpenCodeUsageState } from '../types.ts'
 import {
   fetchState, formatRelative, formatRemaining, formatRemainingCompact,
@@ -34,8 +44,19 @@ function prefersReducedMotion(): boolean {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+/**
+ * Root dock props: the namespace-bound translator and the locale service.
+ * Supplied by the browser plugin mount (`client/index.tsx`).
+ */
+export interface UsageDockProps {
+  /** Namespace-bound translate for this plugin's dictionary. */
+  t: TranslateNS<'opencode-usage'>
+  /** Locale runtime carrying the live zh/en preference. */
+  locale: LocaleRuntime
+}
+
 /** Root state: the dock itself. */
-export function UsageDock(): ReactElement {
+export function UsageDock({ t, locale }: UsageDockProps): ReactElement {
   const [open, setOpen] = useState(false)
   // Closing drives the exit animation: set first, the `usage-pop-out` reverse
   // tweens play, and onAnimationEnd finally flips `open` to false.
@@ -44,6 +65,14 @@ export function UsageDock(): ReactElement {
   const [refreshing, setRefreshing] = useState(false)
   // Re-rendered once a second so badge and panel countdowns stay live.
   const [now, setNow] = useState(() => Date.now())
+
+  // Watch the locale revision: a language switch re-renders this component
+  // in place (bound `t` then resolves the new active locale).
+  const localeRevision = useSyncExternalStore(
+    (callback) => locale.subscribe(callback),
+    () => locale.getSnapshot().revision,
+  )
+  void localeRevision // revision feeds the render subscription, no other use.
 
   // Poll the host cache; interval follows the open state.
   useEffect(() => {
@@ -107,7 +136,7 @@ export function UsageDock(): ReactElement {
     }
   }
 
-  const windows = usageWindows(stateHasUsage(state) ? state.usage : undefined)
+  const windows = usageWindows(stateHasUsage(state) ? state.usage : undefined, t)
   const rolling = windows.find((window) => window.key === 'rolling')
 
   // State-dot semantics map onto the shared StateDot states:
@@ -122,15 +151,23 @@ export function UsageDock(): ReactElement {
   // conflated both).
   const errorVariant = state === null || state.health.status === 'unconfigured' ? 'info' : 'error'
 
+  /** Resolve the user-visible failure detail from a structured health error. */
+  const errorText = (): string => {
+    if (state === null) return t('error.connecting.detail')
+    const error = state.health.error
+    if (error === undefined) return ''
+    return t(`error.${error.code}`, error.params ?? {})
+  }
+
   return (
     <>
       <button
         type="button"
         className={styles.badge}
         onClick={() => (open ? requestClose() : openPanel())}
-        title="OpenCode Go 用量：滚/周/月配额 + 5h 滚动重置倒计时"
+        title={t('dock.title')}
         aria-expanded={open}
-        aria-label="OpenCode Go 用量"
+        aria-label={t('dock.aria')}
       >
         {windows.length > 0 ? (
           <>
@@ -140,13 +177,14 @@ export function UsageDock(): ReactElement {
                 window={window}
                 now={now}
                 size={36}
+                t={t}
               />
             ))}
             {rolling !== undefined && (
-              <span className={styles.badgeCountdown} title="5h 滚动窗口重置倒计时">
+              <span className={styles.badgeCountdown} title={t('dock.badgeCountdown.title')}>
                 <span className={styles.badgeCountdownIcon} aria-hidden="true">↻</span>
                 <span className={styles.badgeCountdownValue}>
-                  {formatRemainingCompact(rolling.resetsAt, now)}
+                  {formatRemainingCompact(rolling.resetsAt, now, t)}
                 </span>
               </span>
             )}
@@ -161,25 +199,25 @@ export function UsageDock(): ReactElement {
           className={styles.panel}
           data-closing={closing || undefined}
           role="dialog"
-          aria-label="OpenCode Go 用量"
+          aria-label={t('dock.aria')}
           onAnimationEnd={handlePanelAnimationEnd}
         >
           <header className={styles.panelHeader}>
             <div className={styles.panelTitle}>
               <span className={styles.panelLogo} aria-hidden="true">◈</span>
-              <span>OpenCode Go 用量</span>
+              <span>{t('dock.aria')}</span>
               <span className={styles.healthLabel}>
-                {state === null ? '连接中…'
-                  : state.health.status === 'ok' ? '实时'
-                  : stateHasUsage(state) ? '数据过期'
-                  : '异常'}
+                {state === null ? t('health.connecting')
+                  : state.health.status === 'ok' ? t('health.live')
+                  : stateHasUsage(state) ? t('health.stale')
+                  : t('health.error')}
               </span>
             </div>
             <button
               type="button"
               className={styles.iconButton}
               onClick={requestClose}
-              aria-label="关闭"
+              aria-label={t('close.aria')}
             >
               ✕
             </button>
@@ -188,28 +226,31 @@ export function UsageDock(): ReactElement {
           {state !== null && stateHasUsage(state) ? (
             <div className={styles.windows}>
               {windows.map((window) => (
-                <WindowRow key={window.key} window={window} now={now} />
+                <WindowRow
+                  key={window.key}
+                  window={window}
+                  now={now}
+                  t={t}
+                  showSublabel={locale.getSnapshot().active === 'zh'}
+                />
               ))}
               {windows.length === 0 && (
-                <p className={styles.emptyNote}>用量服务未返回任何窗口数据。</p>
+                <p className={styles.emptyNote}>{t('empty.note')}</p>
               )}
             </div>
           ) : (
             <div className={styles.errorBox} data-variant={errorVariant}>
               <p className={styles.errorTitle}>
-                {state === null ? '正在连接用量服务…'
-                  : state.health.status === 'unconfigured' ? '尚未配置 API Key'
-                  : '用量获取失败'}
+                {state === null ? t('error.connecting')
+                  : state.health.status === 'unconfigured' ? t('error.unconfigured')
+                  : t('error.fetchFailed')}
               </p>
               <p className={styles.errorDetail}>
-                {state === null
-                  ? '如果长时间停留在该状态，请检查 dsh 服务是否运行了 dsh-opencode-go-usage 插件。'
-                  : state.health.error}
+                {errorText()}
               </p>
               {state !== null && state.health.status === 'unconfigured' && (
                 <p className={styles.errorHint}>
-                  配置方法：打开 Web 设置 → 模型，选择「官方渠道 · OpenCode Go」，填入 API Key
-                  后稍候片刻即会自动生效。
+                  {t('error.unconfigured.hint')}
                 </p>
               )}
             </div>
@@ -217,9 +258,11 @@ export function UsageDock(): ReactElement {
 
           <footer className={styles.panelFooter}>
             <span className={styles.updatedAt}>
-              {state === null ? '' : `更新于 ${formatRelative(state.usageFetchedAt ?? state.health.fetchedAt, now)}`}
+              {state === null ? '' : t('footer.updatedAt', {
+                relative: formatRelative(state.usageFetchedAt ?? state.health.fetchedAt, now, t),
+              })}
               {state !== null && stateHasUsage(state) && state.health.status !== 'ok' && (
-                <span className={styles.staleNote}> · 刷新失败，显示上次数据</span>
+                <span className={styles.staleNote}>{t('footer.staleNote')}</span>
               )}
             </span>
             <a
@@ -227,9 +270,9 @@ export function UsageDock(): ReactElement {
               href="https://opencode.ai/auth"
               target="_blank"
               rel="noopener noreferrer"
-              title="在浏览器中打开 OpenCode Go 控制台"
+              title={t('console.title')}
             >
-              控制台 <span aria-hidden="true">↗</span>
+              {t('console.label')} <span aria-hidden="true">↗</span>
             </a>
             <Button
               variant="outline"
@@ -238,7 +281,7 @@ export function UsageDock(): ReactElement {
               onClick={() => { void handleRefresh() }}
               disabled={refreshing}
             >
-              {refreshing ? '刷新中…' : '立即刷新'}
+              {refreshing ? t('refresh.loading') : t('refresh.idle')}
             </Button>
           </footer>
         </section>
@@ -247,32 +290,40 @@ export function UsageDock(): ReactElement {
   )
 }
 
-/** One quota window row: ring + labels + countdown. The ring mirrors the
-   collapsed badge's double ring (used-percent outer + brand-blue remaining-
-   time inner), and inline legend dots restate the color coding for the row:
-   a green/amber/red dot before "已用" restates the usage ring color, a blue
-   dot before "重置于" restates the inner remaining-time ring color. */
-function WindowRow({ window, now }: { window: WindowView; now: number }): ReactElement {
+/**
+ * One quota window row: ring + labels + countdown. The ring mirrors the
+ * collapsed badge's double ring (used-percent outer + brand-blue remaining-
+ * time inner), and inline legend dots restate the color coding for the row:
+ * a green/amber/red dot before the used-percent text restates the usage ring
+ * color, a blue dot before the reset-countdown text restates the inner
+ * remaining-time ring color.
+ */
+function WindowRow({ window, now, t, showSublabel }: {
+  window: WindowView
+  now: number
+  t: TranslateNS<'opencode-usage'>
+  showSublabel: boolean
+}): ReactElement {
   const remaining = Math.max(0, 100 - window.percent)
   const tone = percentTone(window.percent)
   return (
     <div className={styles.windowRow}>
-      <Ring window={window} now={now} />
+      <Ring window={window} now={now} t={t} />
       <div className={styles.windowBody}>
         <div className={styles.windowName}>
           <span>{window.label}</span>
-          <span className={styles.windowSublabel}>{window.sublabel}</span>
+          {showSublabel && <span className={styles.windowSublabel}>{window.sublabel}</span>}
         </div>
         <div className={styles.windowMeta}>
           <span className={styles.usedText}>
             <span className={styles.rowDot} data-tone={tone} aria-hidden="true" />
-            已用 {window.percent}%
+            {t('row.used', { percent: window.percent })}
           </span>
-          <span className={styles.remainingText}>剩余 {remaining}%</span>
+          <span className={styles.remainingText}>{t('row.remaining', { percent: remaining })}</span>
         </div>
         <div className={styles.countdown}>
           <span className={styles.rowDot} data-tone="time" aria-hidden="true" />
-          重置于 {formatRemaining(window.resetsAt, now)}
+          {t('row.resetsIn', { countdown: formatRemaining(window.resetsAt, now, t) })}
         </div>
       </div>
     </div>
@@ -292,11 +343,13 @@ function WindowRow({ window, now }: { window: WindowView; now: number }): ReactE
  * @param window - the projected quota window view (percent, reset, periodMs).
  * @param now - current epoch ms (drives the inner remaining-time arc).
  * @param size - outer diameter in px (50 for the panel, 36 for the badge).
+ * @param t - namespace-bound translate for the aria label.
  */
-export function Ring({ window, now, size = 50 }: {
+export function Ring({ window, now, size = 50, t }: {
   window: WindowView
   now: number
   size?: number
+  t: TranslateNS<'opencode-usage'>
 }): ReactElement {
   const stroke = size >= 44 ? 5 : 3.5
   const timeStroke = size >= 44 ? 3 : 2.5
@@ -323,7 +376,11 @@ export function Ring({ window, now, size = 50 }: {
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       role="img"
-      aria-label={`${window.label}已用 ${used}%，窗口剩余时间 ${Math.round(remaining * 100)}%`}
+      aria-label={t('ring.aria', {
+        window: window.label,
+        used: Math.round(used),
+        remaining: Math.round(remaining * 100),
+      })}
     >
       <circle
         className={styles.ringTrack}
