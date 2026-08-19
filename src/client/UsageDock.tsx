@@ -281,14 +281,17 @@ function WindowRow({ window, now }: { window: WindowView; now: number }): ReactE
 
 /**
  * Double ring for one quota window, shared by the collapsed badge (size 36)
- * and the expanded panel row (size 50). The outer ring is the used percent
- * (threshold-colored: green <60% / orange ≥60% / red ≥85%); the inner ring is
- * the share of the window period still left before its reset, drawn in the DS
+ * and the expanded panel row (size 50). The outer ring shows the *remaining*
+ * quota share as an arc (full ring at 0% used, shrinking as quota is spent)
+ * and is threshold-colored by spent share: green <60% spent / orange ≥60% /
+ * red ≥85% — so a low remaining share reads as red. The inner ring is the
+ * share of the window period still left before its reset, drawn in the DS
  * brand tone (`--dsw-alias-state-business-primary`) and hugging the outer ring
  * with no visible gap so the two read as one bicolored band. Rounded caps
- * switch to butt at zero so a 0% window never shows a phantom arc, and the
- * dash transition tweens in for a smooth fill on refresh. Fixed SVG dimensions
- * keep the layout stable regardless of font fallback or zoom.
+ * switch to butt at both ends of the arc (0% and 100% remaining) so neither an
+ * empty nor a full ring shows a phantom or bumpy seam, and the dash transition
+ * tweens in for a smooth shrink on refresh. Fixed SVG dimensions keep the
+ * layout stable regardless of font fallback or zoom.
  * @param window - the projected quota window view (percent, reset, periodMs).
  * @param now - current epoch ms (drives the inner remaining-time arc).
  * @param size - outer diameter in px (50 for the panel, 36 for the badge).
@@ -303,8 +306,12 @@ export function Ring({ window, now, size = 50 }: {
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const used = Math.min(100, Math.max(0, window.percent))
-  const dash = (circumference * used) / 100
-  const usedEmpty = used <= 0
+  // Outer ring is the remaining quota share: 100% - used. A 0%-used window
+  // therefore draws a full ring, and the ring empties as quota is consumed.
+  const quotaLeft = 100 - used
+  const dash = (circumference * quotaLeft) / 100
+  const ringEmpty = quotaLeft <= 0
+  const ringFull = quotaLeft >= 100
   const tone = percentTone(used)
 
   // Inner ring hugs the outer ring tight (zero gap): its center radius sits
@@ -323,7 +330,7 @@ export function Ring({ window, now, size = 50 }: {
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       role="img"
-      aria-label={`${window.label}已用 ${used}%，窗口剩余时间 ${Math.round(remaining * 100)}%`}
+      aria-label={`${window.label}剩余额度 ${Math.round(quotaLeft)}%，窗口剩余时间 ${Math.round(remaining * 100)}%`}
     >
       <circle
         className={styles.ringTrack}
@@ -336,7 +343,8 @@ export function Ring({ window, now, size = 50 }: {
       <circle
         className={styles.ringBar}
         data-tone={tone}
-        data-zero={usedEmpty ? 'true' : 'false'}
+        data-zero={ringEmpty ? 'true' : 'false'}
+        data-full={ringFull ? 'true' : 'false'}
         cx={size / 2}
         cy={size / 2}
         r={radius}
@@ -344,7 +352,7 @@ export function Ring({ window, now, size = 50 }: {
         fill="none"
         strokeDasharray={`${dash} ${circumference - dash}`}
         strokeDashoffset={circumference / 4}
-        strokeLinecap={usedEmpty ? 'butt' : 'round'}
+        strokeLinecap={ringEmpty || ringFull ? 'butt' : 'round'}
       />
       <circle
         className={styles.ringTimeTrack}
@@ -373,7 +381,7 @@ export function Ring({ window, now, size = 50 }: {
         dominantBaseline="central"
         textAnchor="middle"
       >
-        {Math.round(used)}%
+        {Math.round(quotaLeft)}%
       </text>
     </svg>
   )

@@ -95,15 +95,18 @@
   white-space: nowrap;
 }
 
-/* Pair the ring bars with a 0% guard: a round line cap always leaves a small
-   visible cap radius, so at used <= 0 we switch to butt to avoid a phantom
-   arc. The dasharray / dashoffset also tween on refresh for a smooth fill. */
+/* Ring-bar cap guards: a round line cap always leaves a small visible cap
+   radius, so at 0% quota left (empty ring) we switch to butt to avoid a
+   phantom arc, and at 100% quota left (full ring) we also switch to butt so
+   the two round endpoints do not bump into each other around the seam. The
+   dasharray / dashoffset also tween on refresh for a smooth fill. */
 .ringBar {
   transition: stroke-dasharray 600ms cubic-bezier(0.22, 1, 0.36, 1),
               stroke-dashoffset 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ringBar[data-zero='true'],
+.ringBar[data-full='true'],
 .ringTimeBar[data-zero='true'] {
   stroke-linecap: butt;
 }
